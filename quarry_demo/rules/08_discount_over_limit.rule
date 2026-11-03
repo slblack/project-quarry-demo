@@ -1,0 +1,13 @@
+// Business-rule guardrail: discount codes above 30% need a human.
+rule "Discount code above 30%"
+metadata:
+    description = "The agent tries to create a discount code worth more than 30%."
+    severity = "medium"
+    enforce = "tool_call"
+    owasp = "LLM06 Excessive agency"
+    technique = "Pending-call argument check"
+strings:
+    $big = "\"percent_off\"\s*:\s*\"?(3[1-9]|[4-9][0-9]|[1-9][0-9]{2,})" regex
+condition:
+    any call in get_tool_calls("create_discount_code") where
+        call.response == null and $big in call.raw_arguments

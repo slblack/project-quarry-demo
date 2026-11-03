@@ -1,0 +1,20 @@
+// Data exfiltration by email: the agent read a customer profile, and now wants to email
+// someone who is neither that customer nor a Northstar address.
+// The capture ("as onfile") remembers the email address found in the profile, so emailing
+// the customer their own data is allowed while emailing anyone else is blocked.
+rule "Customer data emailed to an outside address"
+metadata:
+    description = "The agent read a customer profile and then tries to email an address that is neither that customer nor a Northstar address."
+    severity = "critical"
+    enforce = "tool_call"
+    owasp = "LLM02 Sensitive information disclosure"
+    technique = "Flow (after) + capture"
+strings:
+    $email = "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+" regex
+condition:
+    (any send in get_tool_calls("send_email") where
+        send.response == null
+        and not (send.arguments.to contains onfile)
+        and not (send.arguments.to ~ "@northstar-outfitters\.example$"))
+    after
+    (any prof in get_tool_responses("get_customer_profile") where $email in prof.result as onfile)

@@ -1,0 +1,6 @@
+# Runtime dependencies (exact versions).
+flask==3.1.3
+requests==2.34.2
+# Project Quarry, pinned to the commit this demo was built and tested against. Quarry is alpha;
+# its rule syntax may change, so move this pin deliberately and rerun the tests.
+cisco-project-quarry @ https://github.com/cisco-ai-defense/project-quarry/archive/eadc6e369038dee43886c4470e1b218da4d9cdf1.tar.gz

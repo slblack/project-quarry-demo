@@ -1,0 +1,13 @@
+// Indirect prompt injection: a fetched page contains instructions aimed at the AI agent.
+// Enforced on the tool RESULT: the content is quarantined before the model reads it.
+rule "Prompt injection in fetched web content"
+metadata:
+    description = "A web page returned by fetch_url contains instructions aimed at the AI agent."
+    severity = "high"
+    enforce = "tool_response"
+    owasp = "LLM01 Prompt injection"
+    technique = "Tool-result inspection (regex)"
+strings:
+    $injection = "ignore (all |any )?(previous|prior|above) instructions|system override|new instructions:|you are now|note for ai (assistants|agents)|do not tell the (customer|user)" nocase regex
+condition:
+    any page in get_tool_responses("fetch_url") where $injection in page.result

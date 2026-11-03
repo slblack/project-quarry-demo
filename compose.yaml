@@ -1,0 +1,16 @@
+# docker compose up -d --build   → http://127.0.0.1:5075
+# Set QUARRY_DEMO_IMAGE to use a published image, e.g. ghcr.io/<owner>/project-quarry-demo:latest
+services:
+  quarry-demo:
+    image: ${QUARRY_DEMO_IMAGE:-project-quarry-demo:local}
+    build: .
+    container_name: project-quarry-demo
+    ports:
+      - "127.0.0.1:${QUARRY_DEMO_HOST_PORT:-5075}:5075"   # loopback only — never expose to the LAN
+    volumes:
+      - quarry-demo-data:/data
+      - ./certs:/certs:ro
+    restart: "no"
+
+volumes:
+  quarry-demo-data:

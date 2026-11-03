@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="referrer" content="no-referrer">
+  <title>Project Quarry agent guard</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="40" height="40">
+      <div>
+        <span class="brand-name">Project Quarry</span>
+        <span class="brand-sub">Agent guard demo for the Northstar Outfitters support agent</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="conn-summary" id="conn-summary" aria-live="polite">Checking configuration…</span>
+      <button type="button" class="btn btn-light" id="open-setup" aria-haspopup="dialog">Setup</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-inner" role="tablist">
+      <button role="tab" class="tab" id="tab-scenarios" aria-controls="panel-scenarios" aria-selected="true">Scripted scenarios</button>
+      <button role="tab" class="tab" id="tab-live" aria-controls="panel-live" aria-selected="false" tabindex="-1">Live agent</button>
+      <button role="tab" class="tab" id="tab-rules" aria-controls="panel-rules" aria-selected="false" tabindex="-1">Rules</button>
+      <button role="tab" class="tab" id="tab-how" aria-controls="panel-how" aria-selected="false" tabindex="-1">How it works</button>
+    </div>
+  </nav>
+
+  <main id="main">
+    <!-- Scripted scenarios -->
+    <section id="panel-scenarios" role="tabpanel" aria-labelledby="tab-scenarios" class="panel">
+      <div class="scenario-layout">
+        <div class="scenario-list" id="scenario-list" role="listbox" aria-label="Scenarios"></div>
+        <div class="scenario-detail" id="scenario-detail">
+          <h1 id="sc-title">Choose a scenario</h1>
+          <p class="lede" id="sc-headline"></p>
+          <div class="sc-user" id="sc-user"></div>
+          <details class="notes" id="sc-notes-wrap">
+            <summary>Presenter notes</summary>
+            <p id="sc-notes"></p>
+          </details>
+          <div class="run-bar">
+            <label class="inline-field" for="speed">Playback
+              <select id="speed">
+                <option value="slow">Slow</option>
+                <option value="normal" selected>Normal</option>
+                <option value="fast">Fast</option>
+                <option value="instant">Instant</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-primary" id="run-scripted" disabled>Run scenario</button>
+          </div>
+          <p class="fineprint">Replays are offline: the agent follows a fixed plan, every tool really runs against
+            synthetic data, and Quarry really scans each step. The AI-judge rule uses an offline stand-in here.</p>
+        </div>
+      </div>
+      <div class="compare" id="compare-scripted" hidden></div>
+    </section>
+
+    <!-- Live agent -->
+    <section id="panel-live" role="tabpanel" aria-labelledby="tab-live" class="panel" hidden>
+      <div class="live-head">
+        <h1>Talk to the live agent</h1>
+        <p class="lede">An OpenAI model chooses the tools. The same message goes to an unprotected agent and to one
+          guarded by Quarry, side by side. Both agents are deliberately over-eager, as many real agents are.</p>
+      </div>
+      <form id="live-form" class="live-form" novalidate>
+        <label for="live-message">Customer message</label>
+        <textarea id="live-message" rows="3" maxlength="{{ max_chars }}" placeholder="Type a message, or pick an attack below"></textarea>
+        <div class="presets" id="presets" aria-label="Example messages"></div>
+        <div class="run-bar">
+          <label class="check" for="use-aid"><input type="checkbox" id="use-aid"> Add Cisco AI Defense prompt inspection to the guarded path</label>
+          <button type="submit" class="btn btn-primary" id="run-live">Send to both agents</button>
+        </div>
+        <p class="form-status" id="live-status" role="status" aria-live="polite"></p>
+      </form>
+      <div class="compare" id="compare-live" hidden></div>
+    </section>
+
+    <!-- Rules -->
+    <section id="panel-rules" role="tabpanel" aria-labelledby="tab-rules" class="panel" hidden>
+      <div class="rules-head">
+        <div>
+          <h1>Guard rules</h1>
+          <p class="lede">Switch a rule off and rerun a scenario to show what gets through without it. Changes apply
+            to new runs until the app restarts.</p>
+        </div>
+        <button type="button" class="btn btn-ghost" id="rules-reset">Restore default rules</button>
+      </div>
+      <div class="rules-table" id="rules-table"></div>
+
+      <div class="editor card">
+        <h2>Write a rule</h2>
+        <p class="muted">Quarry compiles each rule before it can run. Test it against every scenario with only this rule
+          active, then add it to the guard.</p>
+        <label for="rule-source" class="visually-hidden">Rule source</label>
+        <textarea id="rule-source" rows="14" spellcheck="false"></textarea>
+        <div class="editor-actions">
+          <button type="button" class="btn btn-ghost" id="rule-compile">Compile</button>
+          <button type="button" class="btn btn-ghost" id="rule-test">Test against scenarios</button>
+          <button type="button" class="btn btn-primary" id="rule-add">Add to guard</button>
+          <button type="button" class="btn btn-link" id="rule-example">Load an example</button>
+        </div>
+        <div id="rule-output" class="rule-output" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="panel-how" role="tabpanel" aria-labelledby="tab-how" class="panel prose" hidden>
+      <h1>How the guard works</h1>
+      <p class="lede">Project Quarry is Cisco's open-source rule engine for agent conversations. Rules read messages,
+        tool calls, tool results and the order they happen in. Each rule compiles to a small state machine before any
+        traffic arrives.</p>
+
+      <div class="flow" aria-label="Enforcement points">
+        <div class="flow-step"><strong>Customer message</strong><span>Optional AI Defense prompt inspection in live mode</span></div>
+        <div class="flow-step q"><strong>Tool call, before it runs</strong><span>Blocked: the tool never executes</span></div>
+        <div class="flow-step q"><strong>Tool result, before the model reads it</strong><span>Quarantined: the model sees a notice instead</span></div>
+        <div class="flow-step q"><strong>Agent reply, before the customer sees it</strong><span>Withheld: a safe message is shown</span></div>
+      </div>
+
+      <h2>What makes it different</h2>
+      <ul>
+        <li><strong>Order matters.</strong> <code>A after B</code> matches only when B happened first. An address change
+          followed by a refund is blocked; a refund followed by an address change is not.</li>
+        <li><strong>Values can be carried between steps.</strong> The exfiltration rule captures the email address from
+          the profile it read, so emailing the customer is allowed and emailing anyone else is not.</li>
+        <li><strong>Pending calls are visible.</strong> A tool call with no result yet (<code>call.response == null</code>)
+          is the moment to block it.</li>
+        <li><strong>Models only when needed.</strong> In the AI-judge rule, cheap local checks decide whether to ask the
+          model at all. Ordinary lookups never reach it.</li>
+        <li><strong>Evidence for every decision.</strong> Each block shows the conversation steps that triggered it, any
+          captured value and any model score against its threshold.</li>
+        <li><strong>Fails closed.</strong> If a scan cannot finish (a timeout or a judge error), the guard blocks
+          rather than guessing.</li>
+      </ul>
+
+      <h2>How this demo decides</h2>
+      <p>The guard keeps the conversation as Quarry should see it. Before each step takes effect it scans the
+        conversation plus that step. If a rule matches that did not match before, and the rule is enforced at this
+        point, the step is stopped. Blocked calls and quarantined content never enter the conversation, so the same
+        rule fires again if the agent retries.</p>
+
+      <h2>Honest limits</h2>
+      <ul>
+        <li>Quarry is in alpha (v0.1). Rule syntax may change before v1.0.</li>
+        <li>This alpha cannot compare a numeric tool argument in a step, so the £150 and 30% limits are written as
+          patterns over the raw arguments.</li>
+        <li>In scripted mode the AI judge is an offline keyword stand-in so replays are repeatable. In live mode it is the
+          OpenAI model you choose in Setup.</li>
+        <li>All data, people, cards, addresses and web pages are fictional. No email is sent and no money moves.</li>
+      </ul>
+      <p class="fineprint">Quarry project: <code>github.com/cisco-ai-defense/project-quarry</code> (Apache 2.0).</p>
+    </section>
+  </main>
+
+  <!-- Setup dialog -->
+  <dialog id="setup" aria-labelledby="setup-title">
+    <form method="dialog" id="setup-form" novalidate>
+      <header class="dialog-head">
+        <h2 id="setup-title">Setup</h2>
+        <button type="button" class="btn btn-ghost btn-small" id="close-setup" aria-label="Close setup">Close</button>
+      </header>
+      <p class="muted small">Scripted scenarios need no keys. Live mode needs an OpenAI key. Keys are stored only on this
+        computer and are never shown again after saving; leave a key blank to keep the saved one.</p>
+
+      <fieldset>
+        <legend>OpenAI (live agent and AI judge)</legend>
+        <label for="openai-key">API key <span class="muted small" id="openai-key-state"></span></label>
+        <input id="openai-key" type="password" autocomplete="off" spellcheck="false">
+        <div class="two">
+          <div>
+            <label for="openai-model">Agent model</label>
+            <input id="openai-model" type="text" autocomplete="off" spellcheck="false">
+          </div>
+          <div>
+            <label for="judge-model">Judge model <span class="muted small">(blank: same as agent)</span></label>
+            <input id="judge-model" type="text" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="verify-row">
+          <button type="button" class="btn btn-ghost btn-small" id="verify-openai">Verify</button>
+          <span class="verify-msg" id="verify-openai-msg" role="status" aria-live="polite"></span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Cisco AI Defense (optional)</legend>
+        <label for="aid-key">Inspection API key <span class="muted small" id="aid-key-state"></span></label>
+        <input id="aid-key" type="password" autocomplete="off" spellcheck="false">
+        <label for="aid-region">Region</label>
+        <select id="aid-region"></select>
+        <div class="verify-row">
+          <button type="button" class="btn btn-ghost btn-small" id="verify-aid">Verify</button>
+          <span class="verify-msg" id="verify-aid-msg" role="status" aria-live="polite"></span>
+        </div>
+      </fieldset>
+
+      <footer class="dialog-foot">
+        <span class="form-status" id="setup-status" role="status" aria-live="polite"></span>
+        <button type="button" class="btn btn-primary" id="save-setup">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

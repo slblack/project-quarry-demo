@@ -1,0 +1,15 @@
+// Neurosymbolic rule: cheap symbolic checks decide WHEN to ask a model, the model decides
+// WHETHER the action matches what the customer asked for. The judge is only called when a
+// consequential tool call is pending, so ordinary lookups cost nothing.
+rule "Action the customer did not ask for (AI judge)"
+metadata:
+    description = "A consequential action (email, refund, address change, discount) is pending and a judge model rates it as not requested by the customer."
+    severity = "high"
+    enforce = "tool_call"
+    owasp = "LLM06 Excessive agency / LLM01 Prompt injection"
+    technique = "Symbolic prefilter + model score"
+strings:
+    $consequential = "^(send_email|issue_refund|update_shipping_address|create_discount_code)$" regex
+condition:
+    (any call in tool_calls where call.response == null and $consequential in call.name)
+    and model("judge").score(messages, text_ref("unrequested_action")) >= 0.5

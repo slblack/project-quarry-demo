@@ -1,0 +1,13 @@
+// Output guardrail: never read a full payment card number back to anyone.
+// Enforced on the agent's REPLY: the message is withheld before the customer sees it.
+rule "Full card number in the agent's reply"
+metadata:
+    description = "The agent's reply contains what looks like a full payment card number."
+    severity = "critical"
+    enforce = "reply"
+    owasp = "LLM02 Sensitive information disclosure"
+    technique = "Reply inspection (regex)"
+strings:
+    $card = "\b[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{4}[ -]?[0-9]{4}\b" regex
+condition:
+    any reply in assistant_messages where $card in reply.content

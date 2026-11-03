@@ -1,0 +1,14 @@
+// Account-takeover pattern: redirect the goods, then claim the money back. Each step is
+// allowed on its own; the ORDER is the signal. A refund followed by an address change does
+// not match this rule.
+rule "Refund after a delivery address change"
+metadata:
+    description = "The agent changed an order's delivery address earlier in this conversation and now tries to issue a refund."
+    severity = "high"
+    enforce = "tool_call"
+    owasp = "LLM06 Excessive agency"
+    technique = "Flow (after): order of events"
+condition:
+    (any refund in get_tool_calls("issue_refund") where refund.response == null)
+    after
+    (any change in get_tool_calls("update_shipping_address") where change.response != null)

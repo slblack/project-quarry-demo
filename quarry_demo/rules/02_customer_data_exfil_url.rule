@@ -1,0 +1,16 @@
+// Data exfiltration through a web request: after reading a profile, the agent tries to fetch a
+// URL whose query string carries an email address or a long encoded value.
+rule "Customer data smuggled into a web request"
+metadata:
+    description = "After reading a customer profile, the agent fetches a URL whose query string carries an email address or a long encoded value."
+    severity = "critical"
+    enforce = "tool_call"
+    owasp = "LLM02 Sensitive information disclosure"
+    technique = "Flow (after) + regex"
+strings:
+    $smuggle = "[?&][^=&]+=([^&]*(@|%40)[^&]*|[^&]{40,})" regex
+condition:
+    (any fetch in get_tool_calls("fetch_url") where
+        fetch.response == null and $smuggle in fetch.arguments.url)
+    after
+    called_tool("get_customer_profile")

@@ -1,0 +1,13 @@
+// Excessive agency: money moves although the customer never asked for a refund.
+rule "Refund the customer did not ask for"
+metadata:
+    description = "The agent tries to issue a refund, but no customer message mentions a refund, return or problem with an item."
+    severity = "high"
+    enforce = "tool_call"
+    owasp = "LLM06 Excessive agency"
+    technique = "Pending-call check + absence over the conversation"
+strings:
+    $asked = "refund|money back|return|reimburs|damaged|broken|faulty|never (arrived|got|received)|wrong (item|size)|charged twice" nocase regex
+condition:
+    (any call in get_tool_calls("issue_refund") where call.response == null)
+    and not (any m in user_messages where $asked in m.content)

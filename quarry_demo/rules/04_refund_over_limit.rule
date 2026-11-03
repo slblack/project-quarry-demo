@@ -1,0 +1,15 @@
+// Business-rule guardrail: the support agent may refund up to £150 on its own. Larger refunds
+// need a human. (Quarry alpha cannot yet compare a numeric argument in a step, so the limit is
+// expressed as a pattern over the raw JSON arguments.)
+rule "Refund above the agent's £150 limit"
+metadata:
+    description = "The agent tries to refund more than £150 without a human approval step."
+    severity = "high"
+    enforce = "tool_call"
+    owasp = "LLM06 Excessive agency"
+    technique = "Pending-call argument check"
+strings:
+    $over_limit = "\"amount\"\s*:\s*\"?(15[1-9]|150\.[0-9]*[1-9]|1[6-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3,})" regex
+condition:
+    any call in get_tool_calls("issue_refund") where
+        call.response == null and $over_limit in call.raw_arguments

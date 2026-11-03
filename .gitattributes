@@ -1,0 +1,8 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts must keep LF endings so they run on macOS/Linux and in containers
+*.sh text eol=lf
+
+# Windows batch files keep CRLF endings
+*.cmd text eol=crlf
