@@ -65,6 +65,15 @@ condition:
     try { resp = await fetch(path, opts); } catch (e) { throw new Error("The demo server is not reachable. Is it still running?"); }
     let data = null;
     try { data = await resp.json(); } catch (e) { /* ignore */ }
+    if (resp.status === 403 && data && data.error && /CSRF token/.test(data.error.message || "")) {
+      // The demo was restarted, so this page's security token is stale. Reload once to pick up
+      // the new one (guarded so a persistent problem cannot cause a reload loop).
+      let reloaded = false;
+      try { reloaded = sessionStorage.getItem("qd-csrf-reload") === "1"; sessionStorage.setItem("qd-csrf-reload", "1"); } catch (e) { reloaded = true; }
+      if (!reloaded) { location.reload(); return new Promise(() => {}); }
+      throw new Error("The demo was restarted. Reload the page (F5) to continue.");
+    }
+    try { sessionStorage.removeItem("qd-csrf-reload"); } catch (e) { /* ignore */ }
     if (!resp.ok || !data || data.ok === false) {
       throw new Error((data && data.error && data.error.message) || `Request failed (HTTP ${resp.status}).`);
     }
