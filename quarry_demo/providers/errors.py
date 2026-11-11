@@ -68,13 +68,13 @@ def tls_message(provider: str, exc: BaseException) -> str:
     if any(k in lower for k in STRICT_REASONS):
         hint = (
             ". The certificate chain was found but does not meet Python 3.13's strict X.509 checks — common with "
-            "corporate inspection CAs. See README section 5: set QUARRY_DEMO_TLS_RELAX_X509_STRICT=1 after "
+            "corporate inspection CAs. See README section 7: start with -RelaxStrictTls (or set QUARRY_DEMO_TLS_RELAX_X509_STRICT=1) after "
             "confirming the CA with IT."
         )
     else:
         hint = (
             ". If your network inspects HTTPS traffic, mount your organisation's root CA into /certs "
-            "(README section 5: Corporate networks and TLS inspection)."
+            "(README section 7: run the start script, which exports it for you, or see certs/README.md)."
         )
     return base + hint + " Verification was not disabled."
 
